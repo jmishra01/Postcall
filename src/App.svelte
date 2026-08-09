@@ -836,7 +836,7 @@
       <button class="icon-button" on:click={() => utilityModal = 'command'} title="Command palette"><Command size={16} /></button>
       <button class="icon-button" on:click={() => darkMode = !darkMode} title="Toggle theme">{#if darkMode}<Sun size={16} />{:else}<Moon size={16} />{/if}</button>
       <button class="icon-button" on:click={() => utilityModal = 'help'} title="Help"><HelpCircle size={16} /></button>
-      <div class="avatar" title="Local profile">JM</div>
+      <!-- <div class="avatar" title="Local profile">LocalUser</div> -->
     </div>
   </header>
 
