@@ -43,8 +43,7 @@ input::placeholder, textarea::placeholder { color: #5f646e; }
 
 .topbar { height: 52px; flex: 0 0 52px; display: flex; align-items: center; border-bottom: 1px solid var(--line); padding: 0 13px 0 17px; background: var(--panel); user-select: none; }
 .brand { display: flex; align-items: center; gap: 9px; width: 260px; font-weight: 700; letter-spacing: -.3px; font-size: 16px; }
-# .brand-mark { color: white; width: 27px; height: 27px; border-radius: 8px 8px 8px 3px; background: linear-gradient(145deg, #ff865c, #f4511e); display: grid; place-items: center; box-shadow: 0 5px 16px rgba(244,81,30,.2); transform: rotate(-2deg); }
-# .brand-mark svg { transform: rotate(2deg); }
+/* The previous gradient badge is intentionally disabled in favor of the Postcall SVG mark. */
 .app-call {color: var(--green)}
 .local-badge { font-size: 8px; letter-spacing: 1px; color: var(--muted); border: 1px solid var(--line); padding: 2px 4px; border-radius: 4px; font-weight: 600; }
 .topnav { height: 100%; display: flex; gap: 6px; }

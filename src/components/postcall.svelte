@@ -1,7 +1,5 @@
-<script>
-
-let {width="24", height="24"} = $props();
-
+<script lang="ts">
+  let { width = 24, height = 24 }: { width?: number | string; height?: number | string } = $props();
 </script>
 
 <svg xmlns="http://www.w3.org/2000/svg" {width} {height} viewBox="0 0 24 24" fill="none">
@@ -16,5 +14,4 @@ let {width="24", height="24"} = $props();
   </g>
   <path d="M18.4 13.9q-.4-.3-.4.2v5.4q0 .5.4.2l3.3-2.4q.4-.3 0-.6Z" fill="#e80"/>
 </svg>
-
 

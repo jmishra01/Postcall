@@ -1,61 +1,38 @@
 # Postcall
 
-Postcall is a fast, local-first desktop API client built with Rust, Tauri 2, Svelte 5, and TypeScript.
+Postcall is a fast, local-first desktop application for creating, organizing, sending, and debugging API requests without sending workspace data to an external service.
 
-## Current foundation
+## What you can do
 
-- Native HTTP execution through Rust and `reqwest`
-- GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS requests
-- Query parameters, `:path` parameters, headers, and bulk key-value editing
-- Raw Text/JavaScript/JSON/HTML/XML, URL-encoded, multipart file/text, binary, and GraphQL bodies
-- Bearer, JWT bearer, OAuth access-token, Basic, API-key, and inherited authentication modes
-- Pretty/raw response body, headers, metadata, copying, and downloads
-- Collection action menus with add request/folder, rename, duplicate, sort, export, and delete
-- Request tabs and draggable request/response panel resizing
-- Environment variables with `{{variable}}` substitution
-- Request history
-- Dark and light themes
-- SQLite-backed workspace persistence in the Tauri application data directory
-- Browser fallback for frontend development
-- Automatic HTTPS-first and HTTP fallback for URLs entered without a protocol
+- Build HTTP requests using GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS.
+- Manage query parameters, path variables, headers, authentication, request bodies, and request settings.
+- Send raw text, JSON, JavaScript, HTML, XML, URL-encoded, multipart, binary-file, and GraphQL bodies.
+- Upload files as multipart form fields or as the complete binary request body.
+- Inspect response bodies, headers, status information, timing, and size using pretty or raw views.
+- Search response content, copy responses, and download response bodies.
+- Generate a cURL command from the active request or paste cURL text to create a request.
+- Import and export Postman Collection v2 and v2.1 JSON files.
 
-## Development
+## Organize your APIs
 
-Prerequisites are Node.js, npm, Rust, and the platform dependencies required by Tauri 2.
+Collections group related requests and can contain folders for individual API areas. Collections, folders, and requests have action menus for common operations such as creating, renaming, duplicating, moving, sorting, exporting, and deleting.
 
-```bash
-npm install
-npm run tauri:dev
-```
+Independent workspaces keep different projects or teams separated. You can create, switch, and remove workspaces without mixing their collections, environments, or request history.
 
-Run the frontend independently:
+## Variables and authorization
 
-```bash
-npm run dev
-```
+Reusable variables can be defined in environments, collections, and folders using `{{variableName}}` syntax. The resolved-variable inspector shows the final URL, each variable value, and the scope supplying it.
 
-## Verification
+Authorization can be configured on individual requests or inherited from a folder or collection. Supported modes include bearer tokens, JWT bearer tokens, OAuth access tokens, Basic authentication, and API keys in headers or query parameters.
 
-```bash
-npm run check
-npm run build
-cd src-tauri && cargo test
-```
+## Local-first by design
 
-Create a desktop debug build:
+Collections, workspaces, environments, and history remain on your device. Postcall does not send telemetry, and the application settings display the exact local storage path.
 
-```bash
-npm run tauri:build -- --debug
-```
+Requests entered without a protocol are attempted with HTTPS first and retried using HTTP when HTTPS does not return a response.
 
-## Next implementation milestones
+## Interface
 
-1. Postman collection/environment import and export, cURL import, and code snippets
-2. Sandboxed pre-request scripts and post-response tests
-3. Collection runner with CSV/JSON iteration data
-4. Cookie jar, certificates, proxies, and detailed network timing
-5. GraphQL, WebSocket, SSE, and gRPC clients
-6. Examples, API documentation, mock servers, backup, and restore
-7. Release packaging, updater support, and full cross-platform end-to-end tests
+Postcall includes request tabs, resizable request and response panels, searchable collections and history, light and dark themes, keyboard-friendly request sending, and menus that close automatically when you click elsewhere in the application.
 
-Postcall stores workspace data locally and does not send telemetry.
+For downloads, installation, development, builds, release packaging, and implementation technologies, see [installation.md](installation.md).

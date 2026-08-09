@@ -10,7 +10,7 @@
   import FormDataEditor from './components/FormDataEditor.svelte';
   import CodeEditor from './components/CodeEditor.svelte';
   import ResponseViewer from './components/ResponseViewer.svelte';
-  import {Postcall as PostcallIcon} from './components/postcall.svelte';
+  import PostcallIcon from './components/postcall.svelte';
   import { executeRequest, getStoragePath, loadBrowserWorkspace, loadWorkspace, saveWorkspace } from './lib/bridge';
   import { parseCurlCommand, parsePostmanCollection } from './lib/importers';
   import { blankWorkspace, initialWorkspaceStore, normalizeRequest, normalizeWorkspaceStore } from './lib/workspace';
