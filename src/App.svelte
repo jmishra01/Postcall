@@ -822,7 +822,7 @@
   <header class="topbar" data-tauri-drag-region>
     <div class="brand">
       <div class="brand-mark">
-      <PostcallIcon width=100 height=100/>
+      <PostcallIcon width=24 height=24/>
       </div>
       <div>
       <span>POST</span><span class="app-call">call</span>

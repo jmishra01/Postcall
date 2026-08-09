@@ -67,7 +67,71 @@ jobs:
       - name: Check frontend
         run: npm run check
 
-      - name: Build installers
+      - name: Import Apple Developer ID certificate
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required GitHub secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          certificate_path="$RUNNER_TEMP/postcall-developer-id.p12"
+          keychain_path="$RUNNER_TEMP/postcall-signing.keychain-db"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security default-keychain -s "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -t 3600 -u "$keychain_path"
+          security import "$certificate_path" -k "$keychain_path" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+
+          signing_identity="$(security find-identity -v -p codesigning "$keychain_path" | sed -n 's/.*"\(Developer ID Application:.*\)".*/\1/p' | head -n 1)"
+          if [ -z "$signing_identity" ]; then
+            echo "::error::The certificate does not contain a Developer ID Application signing identity."
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_IDENTITY=$signing_identity" >> "$GITHUB_ENV"
+          echo "POSTCALL_KEYCHAIN_PATH=$keychain_path" >> "$GITHUB_ENV"
+
+      - name: Build signed and notarized macOS installer
+        if: runner.os == 'macOS'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tauriScript: npm run tauri
+          args: ${{ matrix.args }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('Postcall {0}', github.ref_name) || '' }}
+          releaseBody: Install Postcall using the asset for your operating system and CPU architecture.
+          releaseDraft: false
+          prerelease: false
+          generateReleaseNotes: true
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: postcall-[platform]-[arch]-[bundle]
+          releaseAssetNamePattern: postcall-[version]-[platform]-[arch][setup][ext]
+
+      - name: Build Windows or Linux installer
+        if: runner.os != 'macOS'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,3 +147,11 @@ jobs:
           uploadWorkflowArtifacts: true
           workflowArtifactNamePattern: postcall-[platform]-[arch]-[bundle]
           releaseAssetNamePattern: postcall-[version]-[platform]-[arch][setup][ext]
+
+      - name: Remove temporary signing keychain
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          if [ -n "${POSTCALL_KEYCHAIN_PATH:-}" ] && [ -f "$POSTCALL_KEYCHAIN_PATH" ]; then
+            security delete-keychain "$POSTCALL_KEYCHAIN_PATH"
+          fi
