@@ -1,13 +1,17 @@
 <script lang="ts">
   import { Check, Clock3, Copy, Download, FileJson, Search, WrapText } from '@lucide/svelte';
+  import JsonGrid from './JsonGrid.svelte';
   import type { ResponseData } from '../lib/types';
 
   export let response: ResponseData | null = null;
   export let loading = false;
   export let error = '';
 
+  type BodyView = 'pretty' | 'raw' | 'grid';
+  type GridData = { value: unknown; message: string };
+
   let tab: 'body' | 'headers' | 'info' = 'body';
-  let view: 'pretty' | 'raw' = 'pretty';
+  let view: BodyView = 'pretty';
   let copied = false;
   let downloaded = false;
   let searchOpen = false;
@@ -15,15 +19,32 @@
   let wrap = true;
 
   $: formattedBody = formatBody(response?.body ?? '', response?.contentType ?? '', view);
+  $: gridData = createGrid(response?.body ?? '');
   $: highlightedSegments = highlight(formattedBody, query);
-  $: matchCount = highlightedSegments.filter((segment) => segment.match).length;
+  $: matchCount = view === 'grid'
+    ? countGridMatches(gridData.value, query)
+    : highlightedSegments.filter((segment) => segment.match).length;
 
-  function formatBody(body: string, contentType: string, mode: 'pretty' | 'raw') {
+  function formatBody(body: string, contentType: string, mode: BodyView) {
     if (mode === 'raw') return body;
     if (contentType.includes('json') || body.trim().startsWith('{') || body.trim().startsWith('[')) {
       try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; }
     }
     return body;
+  }
+
+  function createGrid(body: string): GridData {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return { value: undefined, message: 'Grid view is available for JSON responses.' };
+    }
+    return { value: parsed, message: '' };
+  }
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   function formatBytes(bytes: number) {
@@ -58,6 +79,17 @@
     const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const matcher = new RegExp(`(${escaped})`, 'gi');
     return value.split(matcher).filter(Boolean).map((text) => ({ text, match: text.toLowerCase() === needle.toLowerCase() }));
+  }
+
+  function countMatches(value: string, needle: string) {
+    return needle ? highlight(value, needle).filter((segment) => segment.match).length : 0;
+  }
+
+  function countGridMatches(value: unknown, needle: string): number {
+    if (!needle) return 0;
+    if (Array.isArray(value)) return value.reduce<number>((total, item) => total + countGridMatches(item, needle), 0);
+    if (isRecord(value)) return Object.values(value).reduce<number>((total, item) => total + countGridMatches(item, needle), 0);
+    return countMatches(value === undefined ? '' : String(value), needle);
   }
 </script>
 
@@ -106,6 +138,7 @@
         <div class="segment-control">
           <button class:active={view === 'pretty'} on:click={() => view = 'pretty'}>Pretty</button>
           <button class:active={view === 'raw'} on:click={() => view = 'raw'}>Raw</button>
+          <button class:active={view === 'grid'} on:click={() => view = 'grid'}>Grid</button>
         </div>
         <div class="body-actions">
           {#if searchOpen}<div class="response-search-wrap"><input class="response-search" bind:value={query} placeholder="Find in response" /><span>{query ? matchCount : ''}</span></div>{/if}
@@ -115,7 +148,17 @@
           <button class="icon-button" on:click={downloadBody} title={downloaded ? 'Downloaded' : 'Download'}>{#if downloaded}<Check size={15} />{:else}<Download size={15} />{/if}</button>
         </div>
       </div>
-      <pre class="response-code" class:wrap><code>{#each highlightedSegments as segment}{#if segment.match}<mark>{segment.text}</mark>{:else}{segment.text}{/if}{/each}</code></pre>
+      {#if view === 'grid'}
+        {#if gridData.message}
+          <div class="grid-empty">{gridData.message}</div>
+        {:else}
+          <div class="response-grid">
+            <JsonGrid value={gridData.value} {query} {wrap} />
+          </div>
+        {/if}
+      {:else}
+        <pre class="response-code" class:wrap><code>{#each highlightedSegments as segment}{#if segment.match}<mark>{segment.text}</mark>{:else}{segment.text}{/if}{/each}</code></pre>
+      {/if}
     </div>
   {:else if tab === 'headers'}
     <div class="response-headers">
