@@ -1,5 +1,5 @@
 import { blankFormRow, blankRequest, blankRow, uid } from './types';
-import type { ApiRequest, Collection, FormDataRow, PostcallWorkspace, WorkspaceState, WorkspaceStore } from './types';
+import type { ApiRequest, Collection, FormDataRow, Journey, PostcallWorkspace, WorkspaceState, WorkspaceStore } from './types';
 
 export const starterRequest = (): ApiRequest => ({
   id: uid(),
@@ -53,7 +53,8 @@ export const initialWorkspace = (): PostcallWorkspace => ({
     }
   ],
   activeEnvironmentId: null,
-  history: []
+  history: [],
+  journeys: []
 });
 
 export const blankWorkspace = (name: string): PostcallWorkspace => ({
@@ -62,7 +63,8 @@ export const blankWorkspace = (name: string): PostcallWorkspace => ({
   collections: [],
   environments: [],
   activeEnvironmentId: null,
-  history: []
+  history: [],
+  journeys: []
 });
 
 export const initialWorkspaceStore = (): WorkspaceStore => {
@@ -78,7 +80,23 @@ export function normalizeWorkspace(value: WorkspaceState, fallbackName = 'My Wor
     collections: (value.collections ?? []).map(normalizeCollection),
     environments: value.environments ?? [],
     activeEnvironmentId: value.activeEnvironmentId ?? null,
-    history: (value.history ?? []).slice(0, 200)
+    history: (value.history ?? []).slice(0, 200),
+    journeys: ((stored.journeys ?? []) as Journey[]).map((journey) => ({
+      id: journey.id ?? uid(),
+      name: journey.name?.trim() || 'Untitled journey',
+      stopOnError: journey.stopOnError ?? true,
+      steps: (journey.steps ?? []).map((step) => ({
+        id: step.id ?? uid(),
+        requestId: step.requestId ?? '',
+        extractions: (step.extractions ?? []).map((extraction) => ({
+          id: extraction.id ?? uid(),
+          name: extraction.name ?? '',
+          source: extraction.source ?? 'json',
+          path: extraction.path ?? '',
+          template: extraction.template ?? '{{value}}'
+        }))
+      }))
+    }))
   };
 }
 

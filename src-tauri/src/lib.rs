@@ -3,7 +3,7 @@ use reqwest::{header::HeaderMap, Method};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{fs, sync::Mutex, time::Instant};
+use std::{fs, process::Command, sync::Mutex, time::Instant};
 use tauri::{Manager, State};
 
 struct AppState {
@@ -64,6 +64,16 @@ struct ResponseData {
     elapsed_ms: u128,
     size_bytes: usize,
     url: String,
+    timings: ResponseTimings,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ResponseTimings {
+    ttfb_ms: u128,
+    dns_ms: Option<u128>,
+    connect_ms: Option<u128>,
+    tls_ms: Option<u128>,
 }
 
 #[tauri::command]
@@ -164,6 +174,12 @@ async fn execute_http(input: RequestInput) -> Result<ResponseData, String> {
         elapsed_ms,
         size_bytes,
         url: final_url,
+        timings: ResponseTimings {
+            ttfb_ms: elapsed_ms,
+            dns_ms: None,
+            connect_ms: None,
+            tls_ms: None,
+        },
     })
 }
 
@@ -233,6 +249,40 @@ fn get_storage_path(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|error| format!("Could not resolve the storage path: {error}"))
 }
 
+#[tauri::command]
+fn open_storage_location(app: tauri::AppHandle) -> Result<(), String> {
+    let file = app.path().app_data_dir().map_err(|error| error.to_string())?.join("postcall.sqlite3");
+    #[cfg(target_os = "macos")]
+    let status = Command::new("open").arg("-R").arg(&file).status();
+    #[cfg(target_os = "windows")]
+    let status = Command::new("explorer").arg(format!("/select,{}", file.display())).status();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let status = Command::new("xdg-open").arg(file.parent().unwrap_or(&file)).status();
+    status.map_err(|error| format!("Could not open storage location: {error}"))?.success()
+        .then_some(()).ok_or_else(|| "The system file browser could not open the storage location.".into())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProcessMetrics { memory_bytes: u64, cpu_percent: f32, storage_bytes: u64 }
+
+#[tauri::command]
+fn get_process_metrics(app: tauri::AppHandle) -> Result<ProcessMetrics, String> {
+    let data_dir = app.path().app_data_dir().map_err(|error| error.to_string())?;
+    let storage_bytes = ["postcall.sqlite3", "postcall.sqlite3-wal", "postcall.sqlite3-shm"]
+        .iter().filter_map(|name| fs::metadata(data_dir.join(name)).ok()).map(|metadata| metadata.len()).sum();
+    #[cfg(unix)] {
+        let output = Command::new("ps").args(["-o", "rss=,%cpu=", "-p", &std::process::id().to_string()]).output().map_err(|error| format!("Could not read process metrics: {error}"))?;
+        let value = String::from_utf8_lossy(&output.stdout);
+        let mut fields = value.split_whitespace();
+        let memory_kb = fields.next().and_then(|item| item.parse::<u64>().ok()).unwrap_or(0);
+        let cpu_percent = fields.next().and_then(|item| item.parse::<f32>().ok()).unwrap_or(0.0);
+        return Ok(ProcessMetrics { memory_bytes: memory_kb * 1024, cpu_percent, storage_bytes });
+    }
+    #[cfg(not(unix))]
+    Ok(ProcessMetrics { memory_bytes: 0, cpu_percent: 0.0, storage_bytes })
+}
+
 fn open_database(app: &tauri::App) -> Result<Connection, Box<dyn std::error::Error>> {
     let app_data_dir = app.path().app_data_dir()?;
     fs::create_dir_all(&app_data_dir)?;
@@ -263,7 +313,9 @@ pub fn run() {
             execute_http,
             load_workspace,
             save_workspace,
-            get_storage_path
+            get_storage_path,
+            open_storage_location,
+            get_process_metrics
         ])
         .run(tauri::generate_context!())
         .expect("error while running Postcall");

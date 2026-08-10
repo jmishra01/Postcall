@@ -36,7 +36,6 @@
   export let onDuplicateRequest: (request: ApiRequest, collection: Collection, folder: CollectionFolder | null) => void;
   export let onMoveRequest: (request: ApiRequest, collection: Collection, folder: CollectionFolder | null) => void;
   export let onDeleteRequest: (request: ApiRequest, collection: Collection, folder: CollectionFolder | null) => void;
-  export let onOpenSettings: () => void;
 
   let search = '';
   let openMenuId = '';
@@ -276,8 +275,4 @@
     {/if}
   </div>
 
-  <div class="sidebar-footer">
-    <span><span class="status-dot"></span> Local workspace</span>
-    <button class="icon-button" on:click={onOpenSettings} title="Settings"><Settings2 size={15} /></button>
-  </div>
 </aside>

@@ -89,6 +89,12 @@ export type ResponseData = {
   elapsedMs: number;
   sizeBytes: number;
   url: string;
+  timings?: {
+    ttfbMs?: number;
+    dnsMs?: number;
+    connectMs?: number;
+    tlsMs?: number;
+  };
 };
 
 export type HistoryEntry = {
@@ -99,11 +105,35 @@ export type HistoryEntry = {
   createdAt: string;
 };
 
+export type JourneyExtractionSource = 'json' | 'header' | 'body' | 'status';
+
+export type JourneyExtraction = {
+  id: string;
+  name: string;
+  source: JourneyExtractionSource;
+  path: string;
+  template: string;
+};
+
+export type JourneyStep = {
+  id: string;
+  requestId: string;
+  extractions: JourneyExtraction[];
+};
+
+export type Journey = {
+  id: string;
+  name: string;
+  steps: JourneyStep[];
+  stopOnError: boolean;
+};
+
 export type WorkspaceState = {
   collections: Collection[];
   environments: Environment[];
   activeEnvironmentId: string | null;
   history: HistoryEntry[];
+  journeys: Journey[];
 };
 
 export type PostcallWorkspace = WorkspaceState & {

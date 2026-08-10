@@ -31,7 +31,9 @@ export async function executeRequest(input: RequestInput): Promise<ResponseData>
       redirect: input.followRedirects ? 'follow' : 'manual',
       signal: controller.signal
     });
+    const ttfbMs = Math.round(performance.now() - started);
     const body = await response.text();
+    const resource = performance.getEntriesByName(response.url, 'resource').at(-1) as PerformanceResourceTiming | undefined;
     return {
       status: response.status,
       statusText: response.statusText,
@@ -45,7 +47,13 @@ export async function executeRequest(input: RequestInput): Promise<ResponseData>
       contentType: response.headers.get('content-type') ?? '',
       elapsedMs: Math.round(performance.now() - started),
       sizeBytes: new TextEncoder().encode(body).byteLength,
-      url: response.url
+      url: response.url,
+      timings: {
+        ttfbMs,
+        dnsMs: resource ? Math.max(0, Math.round(resource.domainLookupEnd - resource.domainLookupStart)) : undefined,
+        connectMs: resource ? Math.max(0, Math.round(resource.connectEnd - resource.connectStart)) : undefined,
+        tlsMs: resource?.secureConnectionStart ? Math.max(0, Math.round(resource.connectEnd - resource.secureConnectionStart)) : undefined
+      }
     };
   } finally {
     clearTimeout(timer);
@@ -72,6 +80,18 @@ export async function saveWorkspace(workspace: WorkspaceStore): Promise<void> {
 export async function getStoragePath(): Promise<string> {
   if (!isTauri()) return 'Browser localStorage · postcall.workspace';
   return invoke<string>('get_storage_path');
+}
+
+export async function openStorageLocation(): Promise<void> {
+  if (!isTauri()) throw new Error('The storage folder is only available in the desktop app.');
+  await invoke('open_storage_location');
+}
+
+export type ProcessMetrics = { memoryBytes: number; cpuPercent: number; storageBytes: number };
+
+export async function getProcessMetrics(): Promise<ProcessMetrics | null> {
+  if (!isTauri()) return null;
+  return invoke<ProcessMetrics>('get_process_metrics');
 }
 
 export function loadBrowserWorkspace(): WorkspaceStore | WorkspaceState | null {
