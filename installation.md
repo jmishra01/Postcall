@@ -106,30 +106,3 @@ To publish installers on a GitHub Release, keep the versions in `package.json`, 
 git tag v0.1.0
 git push origin v0.1.0
 ```
-
-### Configure macOS signing and notarization
-
-The macOS jobs intentionally fail instead of publishing an unverifiable DMG when Apple credentials are missing. Membership in the Apple Developer Program is required.
-
-Create a **Developer ID Application** certificate, install it in Keychain Access, and export the certificate together with its private key as a password-protected `.p12` file. Convert that file to a single-line Base64 value:
-
-```bash
-openssl base64 -A -in DeveloperIDApplication.p12 -out certificate-base64.txt
-```
-
-Add these repository secrets under **Settings → Secrets and variables → Actions**:
-
-- `APPLE_CERTIFICATE`: contents of `certificate-base64.txt`
-- `APPLE_CERTIFICATE_PASSWORD`: password used when exporting the `.p12`
-- `KEYCHAIN_PASSWORD`: a strong temporary password for the CI keychain
-- `APPLE_ID`: Apple Developer account email
-- `APPLE_PASSWORD`: app-specific password for that Apple ID
-- `APPLE_TEAM_ID`: Apple Developer Team ID
-
-The workflow imports the certificate into a temporary keychain, signs the application with the Developer ID identity, submits it to Apple's notarization service, and lets Tauri staple the notarization ticket to the distributed package.
-
-Configure Windows code-signing credentials separately before distributing Windows packages publicly to avoid SmartScreen trust warnings.
-
-### Opening an older ad-hoc build
-
-Previously generated ad-hoc builds cannot become trusted without being rebuilt or notarized. For a Postcall build you created or obtained from a trusted source, you can approve it using **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. Replace that installation with a signed and notarized release when one is available.
