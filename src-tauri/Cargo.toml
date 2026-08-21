@@ -1,6 +1,6 @@
 [package]
 name = "postcall"
-version = "0.1.2"
+version = "0.1.3"
 description = "A fast, local-first API client"
 authors = ["Postcall contributors"]
 edition = "2021"
