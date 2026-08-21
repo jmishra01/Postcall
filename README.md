@@ -32,6 +32,25 @@ Collections, workspaces, environments, and history remain on your device. Postca
 
 Requests entered without a protocol are attempted with HTTPS first and retried using HTTP when HTTPS does not return a response.
 
+## Cloud sync via your own GitHub repository
+
+Collections can optionally be synced through a GitHub repository you own, so the same collections are available on every device without relying on a third-party cloud service. This is opt-in: nothing leaves your device unless you link a repository.
+
+To link a repository, open Settings and provide:
+
+- **Repository owner and name** — the GitHub repo to store collections in (create an empty one first, e.g. `postcall-collections`).
+- **Branch** — the branch to read from and write to (`main` by default).
+- **A fine-grained personal access token** — scoped to read/write access to "Contents" on that one repository. The token is stored in your OS keychain (Keychain on macOS, Credential Manager on Windows, Secret Service on Linux), never in the workspace file or the SQLite database.
+
+Once linked, **Sync now** pulls remote changes and pushes any collections that changed locally since the last sync:
+
+- Each collection is stored as its own file under `collections/`, tracked by a `manifest.json` at the repository root.
+- Pushes are conditioned on the collection's last-known remote SHA, so a change someone else pushed since your last sync is never silently overwritten — it surfaces as a conflict instead.
+- When a collection changed both locally and on GitHub since the last sync, you choose **Keep mine** or **Keep GitHub's** to resolve it explicitly.
+- Deleting a collection does not currently sync — removing it locally or on GitHub does not remove its counterpart on the other side.
+
+Unlinking clears the stored config, the sync state, and the keychain token, and stops any further sync activity.
+
 ## Interface
 
 Postcall includes request tabs, resizable request and response panels, searchable collections and history, light and dark themes, keyboard-friendly request sending, and menus that close automatically when you click elsewhere in the application.
