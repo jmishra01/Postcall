@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import {
-    Activity, Braces, Check, Cloud, CodeXml as Code2, Command, Download, Eye, FileUp,
-    Earth as Globe2, CircleQuestionMark as HelpCircle, Moon, PanelLeftClose, Play, Plus, Save, Settings2,
+    Activity, AlertTriangle, Braces, Check, Cloud, CodeXml as Code2, Command, Download, Eye, FileUp,
+    Earth as Globe2, Github, CircleQuestionMark as HelpCircle, Moon, PanelLeftClose, Play, Plus, RefreshCw, Save, Settings2,
     Sparkles, Sun, X, Route, Trash2, ChevronUp, ChevronDown
   } from '@lucide/svelte';
   import Sidebar from './components/Sidebar.svelte';
@@ -20,6 +20,7 @@
   import { blankWorkspace, initialWorkspaceStore, normalizeRequest, normalizeWorkspaceStore } from './lib/workspace';
   import { blankRequest, blankRow, uid } from './lib/types';
   import type { ApiRequest, Collection, CollectionFolder, Environment, HistoryEntry, Journey, JourneyExtraction, KeyValue, PostcallWorkspace, RequestAuth, RequestInput, ResponseData } from './lib/types';
+  import { getLinkedRepository, type SyncConflict, type SyncError } from './lib/sync';
 
   type SidebarSection = 'collections' | 'history' | 'environments';
   type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'scripts' | 'settings';
@@ -85,6 +86,12 @@
   let toastTimer: number | undefined;
   let processMetrics: ProcessMetrics | null = null;
   let metricsTimer: number | undefined;
+  let syncSettingsRef: SyncSettings;
+  let gitLinkedRepo: { owner: string; repo: string; branch: string } | null = null;
+  let gitSyncing = false;
+  let gitLastSyncLabel = '';
+  let gitConflicts: SyncConflict[] = [];
+  let gitErrors: SyncError[] = [];
   let curlImportOpen = false;
   let curlText = '';
   let curlImportError = '';
@@ -183,6 +190,7 @@
     resetRequestSession(workspace);
     hydrated = true;
     saveWorkspace({ workspaces, activeWorkspaceId }).catch(console.error);
+    gitLinkedRepo = await getLinkedRepository().catch(() => null);
   });
 
   onDestroy(() => window.clearInterval(metricsTimer));
@@ -195,6 +203,11 @@
   async function revealStorage() {
     try { await openStorageLocation(); }
     catch (error) { showToast(error instanceof Error ? error.message : String(error)); }
+  }
+
+  async function triggerGitSync() {
+    if (!gitLinkedRepo || gitSyncing) return;
+    await syncSettingsRef?.handleSync();
   }
 
   function markChanged() {
@@ -1533,6 +1546,29 @@
     <span>Requests <strong>{savedRequestCount}</strong></span>
     <div class="status-spacer"></div>
     {#if processMetrics}<span title="Local SQLite database, WAL, and shared-memory files">SQLite <strong>{formatBytes(processMetrics.storageBytes)}</strong></span><span title="Memory used by Postcall">RAM <strong>{(processMetrics.memoryBytes / 1024 / 1024).toFixed(0)} MB</strong></span><span title="CPU used by Postcall">CPU <strong>{processMetrics.cpuPercent.toFixed(1)}%</strong></span>{/if}
+    {#if gitLinkedRepo}
+      <span
+        class="status-git"
+        class:has-conflict={gitConflicts.length || gitErrors.length}
+        title={`${gitLinkedRepo.owner}/${gitLinkedRepo.repo} · Branch ${gitLinkedRepo.branch}${gitLastSyncLabel ? ` · Last synced ${gitLastSyncLabel}` : ''}`}
+      >
+        <Github size={12} />
+        <span>
+          {#if gitSyncing}Syncing…
+          {:else if gitConflicts.length}{gitConflicts.length} conflict{gitConflicts.length > 1 ? 's' : ''}
+          {:else if gitErrors.length}<AlertTriangle size={11} />Sync error
+          {:else if gitLastSyncLabel}Synced {gitLastSyncLabel}
+          {:else}{gitLinkedRepo.owner}/{gitLinkedRepo.repo}{/if}
+        </span>
+      </span>
+      <button class="icon-button subtle" disabled={gitSyncing} on:click={triggerGitSync} title="Sync collections with GitHub">
+        <RefreshCw size={13} class={gitSyncing ? 'spinning' : ''} />
+      </button>
+    {:else}
+      <button class="status-git muted" on:click={() => utilityModal = 'settings'} title="Link a GitHub repository to sync collections">
+        <Github size={12} /><span>Not linked</span>
+      </button>
+    {/if}
     <button class="icon-button subtle" on:click={() => utilityModal = 'settings'} title="Application settings"><Settings2 size={14} /></button>
   </footer>
 
@@ -1915,7 +1951,17 @@
           <div class="application-settings">
             <section><div class="settings-section-heading"><strong>Appearance</strong><small>Your selection is remembered on this device.</small></div><div class="theme-grid">{#each [['dark','Dark','#17191d'], ['light','Light','#f4f5f6'], ['midnight','Midnight','#0a1020'], ['forest','Forest','#0d1813'], ['ocean','Ocean','#091820']] as option}<button class:active={theme === option[0]} on:click={() => selectTheme(option[0] as AppTheme)}><i style={`background:${option[2]}`}></i><span>{option[1]}</span>{#if theme === option[0]}<Check size={13} />{/if}</button>{/each}</div></section>
             <section><div class="settings-section-heading"><strong>Local data</strong><small>Workspace content stays on this device.</small></div><div class="settings-action-row"><span><strong>Application data folder</strong><small>Reveal the database in your system file browser.</small></span><button class="secondary-button" on:click={revealStorage}>Open folder</button></div><div class="settings-action-row"><span><strong>Request history</strong><small>{workspace.history.length} locally stored requests.</small></span><button class="secondary-button" disabled={!workspace.history.length} on:click={() => { workspace.history = []; commitWorkspace(); showToast('History cleared'); }}>Clear history</button></div></section>
-            <SyncSettings collections={workspace.collections} onMergeCollections={mergeSyncedCollections} onToast={showToast} />
+            <SyncSettings
+              bind:this={syncSettingsRef}
+              collections={workspace.collections}
+              onMergeCollections={mergeSyncedCollections}
+              onToast={showToast}
+              bind:linkedRepo={gitLinkedRepo}
+              bind:syncing={gitSyncing}
+              bind:lastSyncLabel={gitLastSyncLabel}
+              bind:conflicts={gitConflicts}
+              bind:errors={gitErrors}
+            />
           </div>
           <div class="modal-footer"><button class="primary-button" on:click={() => utilityModal = null}>Done</button></div>
         {:else}

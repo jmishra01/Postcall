@@ -9,17 +9,18 @@
   export let onMergeCollections: (merged: Collection[]) => void;
   export let onToast: (message: string) => void;
 
-  let linkedRepo: { owner: string; repo: string; branch: string } | null = null;
+  export let linkedRepo: { owner: string; repo: string; branch: string } | null = null;
+  export let syncing = false;
+  export let lastSyncLabel = '';
+  export let conflicts: SyncConflict[] = [];
+  export let errors: SyncError[] = [];
+
   let repoOwner = '';
   let repoName = '';
   let repoBranch = 'main';
   let repoToken = '';
   let linking = false;
   let linkError = '';
-  let syncing = false;
-  let lastSyncLabel = '';
-  let conflicts: SyncConflict[] = [];
-  let errors: SyncError[] = [];
 
   function collectionName(collectionId: string): string {
     if (collectionId === '__manifest__') return 'Collection manifest';
@@ -62,7 +63,7 @@
     onToast('GitHub unlinked');
   }
 
-  async function handleSync() {
+  export async function handleSync() {
     syncing = true;
     try {
       const result = await sync(collections);
