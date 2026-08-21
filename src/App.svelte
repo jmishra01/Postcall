@@ -11,6 +11,7 @@
   import CodeEditor from './components/CodeEditor.svelte';
   import ResponseViewer from './components/ResponseViewer.svelte';
   import PostcallIcon from './components/postcall.svelte';
+  import SyncSettings from './components/SyncSettings.svelte';
   import { executeRequest, getProcessMetrics, loadBrowserWorkspace, loadWorkspace, openStorageLocation, saveWorkspace } from './lib/bridge';
   import type { ProcessMetrics } from './lib/bridge';
   import { parseCurlCommand, parsePostmanCollection } from './lib/importers';
@@ -284,6 +285,14 @@
     pendingDeleteWorkspace = null;
     persistWorkspaceStore();
     showToast('Workspace deleted');
+  }
+
+  function mergeSyncedCollections(merged: Collection[]) {
+    if (!merged.length) return;
+    const byId = new Map(workspace.collections.map((collection) => [collection.id, collection]));
+    for (const collection of merged) byId.set(collection.id, collection);
+    workspace.collections = Array.from(byId.values());
+    commitWorkspace();
   }
 
   function showToast(message: string) {
@@ -1906,6 +1915,7 @@
           <div class="application-settings">
             <section><div class="settings-section-heading"><strong>Appearance</strong><small>Your selection is remembered on this device.</small></div><div class="theme-grid">{#each [['dark','Dark','#17191d'], ['light','Light','#f4f5f6'], ['midnight','Midnight','#0a1020'], ['forest','Forest','#0d1813'], ['ocean','Ocean','#091820']] as option}<button class:active={theme === option[0]} on:click={() => selectTheme(option[0] as AppTheme)}><i style={`background:${option[2]}`}></i><span>{option[1]}</span>{#if theme === option[0]}<Check size={13} />{/if}</button>{/each}</div></section>
             <section><div class="settings-section-heading"><strong>Local data</strong><small>Workspace content stays on this device.</small></div><div class="settings-action-row"><span><strong>Application data folder</strong><small>Reveal the database in your system file browser.</small></span><button class="secondary-button" on:click={revealStorage}>Open folder</button></div><div class="settings-action-row"><span><strong>Request history</strong><small>{workspace.history.length} locally stored requests.</small></span><button class="secondary-button" disabled={!workspace.history.length} on:click={() => { workspace.history = []; commitWorkspace(); showToast('History cleared'); }}>Clear history</button></div></section>
+            <SyncSettings collections={workspace.collections} onMergeCollections={mergeSyncedCollections} onToast={showToast} />
           </div>
           <div class="modal-footer"><button class="primary-button" on:click={() => utilityModal = null}>Done</button></div>
         {:else}

@@ -1,3 +1,5 @@
+mod github;
+
 use base64::Engine;
 use reqwest::{header::HeaderMap, Method};
 use rusqlite::{params, Connection};
@@ -296,6 +298,7 @@ fn open_database(app: &tauri::App) -> Result<Connection, Box<dyn std::error::Err
            updated_at INTEGER NOT NULL
          );",
     )?;
+    github::init_schema(&database)?;
     Ok(database)
 }
 
@@ -315,7 +318,13 @@ pub fn run() {
             save_workspace,
             get_storage_path,
             open_storage_location,
-            get_process_metrics
+            get_process_metrics,
+            github::github_set_config,
+            github::github_get_config,
+            github::github_clear_config,
+            github::github_test_connection,
+            github::github_pull,
+            github::github_push
         ])
         .run(tauri::generate_context!())
         .expect("error while running Postcall");

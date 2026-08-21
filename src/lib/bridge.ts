@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { RequestInput, ResponseData, WorkspaceState, WorkspaceStore } from './types';
 
-const isTauri = () => '__TAURI_INTERNALS__' in window;
+export const isTauri = () => '__TAURI_INTERNALS__' in window;
 
 export async function executeRequest(input: RequestInput): Promise<ResponseData> {
   if (isTauri()) {
