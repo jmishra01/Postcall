@@ -15,7 +15,19 @@ Download the `.dmg` matching your Mac:
 - `aarch64` for Apple Silicon Macs
 - `x86_64` for Intel Macs
 
-Open the disk image and drag Postcall into Applications. Official release packages must be signed with a Developer ID Application certificate and notarized by Apple so Gatekeeper can verify them.
+Open the disk image and drag Postcall into Applications.
+
+Release packages are **not** signed with an Apple Developer ID certificate or notarized, so Gatekeeper will block the first launch with a message such as "Postcall is damaged and can't be opened" or "cannot be opened because the developer cannot be verified". To run it anyway:
+
+1. Try to open Postcall from Applications (it will be blocked).
+2. Open **System Settings > Privacy & Security**, scroll to the Security section, and click **Open Anyway** next to the message about Postcall.
+3. Confirm **Open** in the dialog that appears.
+
+Alternatively, remove the quarantine attribute from Terminal before the first launch:
+
+```bash
+xattr -cr /Applications/Postcall.app
+```
 
 ### Linux
 
